@@ -33,39 +33,47 @@ phi m = length [x | x <- [1..m], (gcd x m == 1)]
 extendedGCD :: Int -> Int -> ((Int, Int), Int)
 extendedGCD a b
     | b == 0 = ((1,0),a)
-    | otherwise  = (((d - (b*u')) `div` r,u'- (q*v')),gcd a b)
+    | otherwise  = ((v',u'- (q*v')),gcd a b)
     where (q,r) = quotRem a b
-          ((v',u'),d) = extendedGCD b r
+          ((u',v'),d) = extendedGCD b r
 
 -- Inverse of a modulo m
 inverse :: Int -> Int -> Int
-inverse a m = error "TODO: implement inverse"
+inverse a m = u `mod` m
+    where ((u,v),d) = extendedGCD a m
 
 -- Calculates (a^k mod m)
 -- 
-modPow :: Integer -> Integer -> Integer -> Integer
+modPow :: Int -> Int -> Int -> Int
 modPow a k m
-    | even k = ((a^2 `mod` m)^(k `div` 2) `mod` m) `mod` m
-    | otherwise = ((a*((a^2 `mod` m)^(k `div` 2) `mod` m)) `mod` m) `mod` m
+    | m == 1 = 0 
+    | k == 0 = 1   
+    | k == 1 = a `mod` m
+    | even k = modPow (a^2 `mod` m) (k `div` 2)  m
+    | otherwise = (a `mod` m)*(modPow ((a `mod` m)^2 `mod` m) (k `div` 2) m) `mod`m
 
 
 
 
 -- Returns the smallest integer that is coprime with phi
 smallestCoPrimeOf :: Int -> Int
-smallestCoPrimeOf phi = error "TODO: implement smallestCoPrimeOf"
+smallestCoPrimeOf phi = smallestCoPrimeOf' phi 2
+    where smallestCoPrimeOf' a b
+            | gcd a b == 1 = b
+            | otherwise = smallestCoPrimeOf' a (b+1)
 
 -- Generates keys pairs (public, private) = ((e, n), (d, n))
 -- given two "large" distinct primes, p and q
 genKeys :: Int -> Int -> ((Int, Int), (Int, Int))
-genKeys p q = error "TODO: implement genKeys"
+genKeys p q = ((e,p*q),(inverse e ((p-1)*(q-1)),p*q))
+    where e = smallestCoPrimeOf ((p-1)*(q-1))
 
 -- RSA encryption/decryption; (e, n) is the public key
 rsaEncrypt :: Int -> (Int, Int) -> Int
-rsaEncrypt m (e, n) = error "TODO: implement rsaEncrypt"
+rsaEncrypt m (e, n) = modPow m e n
 
 rsaDecrypt :: Int -> (Int, Int) -> Int
-rsaDecrypt = error "TODO: implement rsaDecrypt"
+rsaDecrypt c (d,n)  = modPow c d n
 
 
 -------------------------------------------------------------------------------
@@ -73,19 +81,19 @@ rsaDecrypt = error "TODO: implement rsaDecrypt"
 
 -- Returns position of a letter in the alphabet
 toInt :: Char -> Int
-toInt a = error "TODO: implement toInt"
+toInt a = ord a - ord 'a'
 
 -- Returns the n^th letter
 toChar :: Int -> Char
-toChar n = error "TODO: implement toChar"
+toChar n = chr (n + ord 'a')
 
 -- "adds" two letters
 add :: Char -> Char -> Char
-add a b = error "TODO: implement add"
+add a b = toChar ((toInt a + toInt b) `mod` ((ord 'z' - ord 'a') +1))  
 
 -- "substracts" two letters
 substract :: Char -> Char -> Char
-substract a b = error "TODO: implement substract"
+substract a b = toChar((toInt a - toInt b) `mod` ((ord 'z' - ord 'a') +1))
 
 -- the next functions present
 -- 2 modes of operation for block ciphers : ECB and CBC
@@ -94,17 +102,41 @@ substract a b = error "TODO: implement substract"
 -- ecb (electronic codebook) with block size of a letter
 --
 ecbEncrypt :: Char -> String -> String
-ecbEncrypt key m = error "TODO: implement ecbEncrypt"
+ecbEncrypt key m = map (add key) m 
 
 ecbDecrypt :: Char -> String -> String
-ecbDecrypt key m = error "TODO: implement ecbDecrypt"
+ecbDecrypt key [] = []
+ecbDecrypt key  (m:ms) = substract m key : ecbDecrypt key ms
 
 -- cbc (cipherblock chaining) encryption with block size of a letter
 -- initialisation vector iv is a letter
 -- last argument is message m as a string
 --
 cbcEncrypt :: Char -> Char -> String -> String
-cbcEncrypt key iv m = error "TODO: implement cbcEncrypt"
+cbcEncrypt key iv [] = []
+cbcEncrypt key iv (m:ms) = add key (add m iv) : cbcEncrypt key (add key (add m iv)) ms
+
+
+{--cbcDecrypt :: Char -> Char -> String -> String
+cbcDecrypt key iv [] = []
+cbcDecrypt key iv (m:ms) 
+  = (substract (substract m iv) key) : cbcDecrypt key (substract (substract m iv) key) ms
+
+--}
+
 
 cbcDecrypt :: Char -> Char -> String -> String
-cbcDecrypt key iv m = error "TODO: implement cbcDecrypt"
+cbcDecrypt key iv m
+   = cbcDecrypt' key iv m
+   where
+      cbcDecrypt' key iv m
+        | null m = []
+        | otherwise = x : cbcDecrypt' key (head m) xs
+        where
+           x = substract (substract (head m) iv) key
+           xs = tail m
+
+
+
+
+
