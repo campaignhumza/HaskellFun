@@ -30,9 +30,8 @@ split seps str = split' seps str [] [] []
 split :: [Char] -> String -> (String, [String])
 split seps [] = ("",[""])
 split seps (y:ys)
-    | isAlpha y = (seps', ((y:w):ws))
-    | isWS y = (y:seps', "" : (w:ws))
     | elem y seps = (y:seps',"" : (w:ws))
+    | otherwise = (seps', ((y:w):ws))
     where
       (seps', (w:ws)) = split seps ys
 
@@ -40,18 +39,29 @@ split seps (y:ys)
 --isAlpha a = (ord 'a' <= a && a <= ord 'z') || (ord 'A' <= a && a <= ord 'Z') 
 
 
-isWS :: Char -> Bool
-isWS a = a == ' '
-
-
 combine :: String -> [String] -> [String]
-combine = error "TODO: implement combine"
+combine "" words = words
+combine (x:xs) (y:ys) =  y: [x] : combine xs ys
 
 getKeywordDefs :: [String] -> KeywordDefs
-getKeywordDefs = error "TODO: implement getKeywordDefs"
+getKeywordDefs [] = []
+getKeywordDefs (w:ws) = (y,concat (combine xs ys)) : getKeywordDefs ws
+    where ((x:xs),(y:ys)) = split separators w
+                        
+replaceWord :: Keyword -> KeywordDefs -> KeywordValue
+replaceWord key defs = head (lookUp key defs)
+               
+expand' :: [String] -> KeywordDefs -> [String]
+expand' [] defs = []
+expand' (x:xs) defs
+    | x /= "" && head x == '$' = (replaceWord x defs) : (expand' xs defs)
+    | otherwise = x : (expand' xs defs)
 
 expand :: FileContents -> FileContents -> FileContents
-expand = error "TODO: implement expand"
+expand words info = concat (combine seps (expand' words' (getKeywordDefs keywords))) 
+    where (seps,words') = split separators words
+          (_,keywords) = split "\n" info
+
 
 -- You may wish to uncomment and implement this helper function
 -- when implementing expand
